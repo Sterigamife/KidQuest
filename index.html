@@ -15,15 +15,29 @@
 </head>
 <body class="bg-slate-50 min-h-screen pb-10 font-sans text-slate-900">
 
+    <!-- SELECTEUR DE PROFIL AVEC PHOTOS -->
     <div id="user-selection" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-6 text-white hidden">
-        <h1 class="text-3xl font-black mb-8 italic text-blue-400 uppercase tracking-tighter">Qui pilote ?</h1>
-        <div class="grid grid-cols-2 gap-6 w-full max-w-sm text-center">
-            <button onclick="setUser('Papa')" class="bg-blue-600 p-6 rounded-3xl flex flex-col items-center gap-3 active:scale-95 transition shadow-lg border-b-4 border-blue-800">
-                <span class="text-5xl">👨‍🦱</span><span class="font-bold">Papa</span>
+        <h1 class="text-3xl font-black mb-12 italic text-blue-400 uppercase tracking-tighter">Qui pilote ?</h1>
+        <div class="grid grid-cols-2 gap-8 w-full max-w-md text-center">
+            
+            <!-- PROFIL PAPA -->
+            <button onclick="setUser('Papa')" class="group flex flex-col items-center gap-4 active:scale-95 transition">
+                <div class="relative">
+                    <img src="papa.jpg" alt="Papa" class="w-32 h-32 rounded-full object-cover border-4 border-blue-600 shadow-xl group-hover:border-white transition-all">
+                    <div class="absolute -bottom-2 -right-2 bg-blue-600 text-white rounded-full p-2 shadow-lg">👨‍🦱</div>
+                </div>
+                <span class="font-black text-xl tracking-tight uppercase">Papa</span>
             </button>
-            <button onclick="setUser('Maman')" class="bg-pink-600 p-6 rounded-3xl flex flex-col items-center gap-3 active:scale-95 transition shadow-lg border-b-4 border-pink-800">
-                <span class="text-5xl">👩‍🦰</span><span class="font-bold">Maman</span>
+
+            <!-- PROFIL MAMAN -->
+            <button onclick="setUser('Maman')" class="group flex flex-col items-center gap-4 active:scale-95 transition">
+                <div class="relative">
+                    <img src="maman.jpg" alt="Maman" class="w-32 h-32 rounded-full object-cover border-4 border-pink-600 shadow-xl group-hover:border-white transition-all">
+                    <div class="absolute -bottom-2 -right-2 bg-pink-600 text-white rounded-full p-2 shadow-lg">👩‍🦰</div>
+                </div>
+                <span class="font-black text-xl tracking-tight uppercase">Maman</span>
             </button>
+
         </div>
     </div>
 
