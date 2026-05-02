@@ -1,1 +1,290 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KidQuest - Sync Totale</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .reward-locked { opacity: 0.3; filter: grayscale(1); border-style: dashed; }
+        .reward-unlocked { opacity: 1 !important; filter: grayscale(0) !important; border-color: #3b82f6 !important; background-color: #eff6ff !important; border-style: solid !important; transform: scale(1.02); }
+        .glow-blue { box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+        .btn-done { background-color: #f1f5f9 !important; opacity: 0.6 !important; cursor: not-allowed; border-color: #e2e8f0 !important; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-10 font-sans text-slate-900">
 
+    <div id="user-selection" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-6 text-white hidden">
+        <h1 class="text-3xl font-black mb-8 italic text-blue-400 uppercase tracking-tighter">Qui pilote ?</h1>
+        <div class="grid grid-cols-2 gap-6 w-full max-w-sm text-center">
+            <button onclick="setUser('Papa')" class="bg-blue-600 p-6 rounded-3xl flex flex-col items-center gap-3 active:scale-95 transition shadow-lg border-b-4 border-blue-800">
+                <span class="text-5xl">👨‍🦱</span><span class="font-bold">Papa</span>
+            </button>
+            <button onclick="setUser('Maman')" class="bg-pink-600 p-6 rounded-3xl flex flex-col items-center gap-3 active:scale-95 transition shadow-lg border-b-4 border-pink-800">
+                <span class="text-5xl">👩‍🦰</span><span class="font-bold">Maman</span>
+            </button>
+        </div>
+    </div>
+
+    <main id="main-app" class="p-4 max-w-md mx-auto space-y-6">
+        <div class="flex justify-between items-center px-2">
+            <span id="user-info" class="text-[10px] font-black uppercase tracking-widest text-slate-400 italic font-bold">Connexion...</span>
+            <button onclick="openProfileSelector()" class="text-[10px] font-bold underline opacity-30 uppercase">Profils</button>
+        </div>
+
+        <!-- SCORE GLOBAL -->
+        <div class="bg-slate-900 rounded-[2.5rem] p-7 text-white shadow-2xl relative overflow-hidden">
+            <div class="flex justify-between items-start relative z-10">
+                <div>
+                    <p class="text-blue-400 text-[10px] font-black uppercase tracking-[0.2em]">Cumul Global</p>
+                    <div id="totalPoints" class="text-7xl font-black tabular-nums tracking-tighter">0</div>
+                </div>
+                <div class="text-right">
+                    <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest italic font-bold">Objectif</p>
+                    <div id="nextGoal" class="text-2xl font-black text-blue-400">70</div>
+                </div>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-3 mt-6 overflow-hidden border border-slate-700">
+                <div id="globalProgress" class="bg-gradient-to-r from-blue-600 to-cyan-400 h-full transition-all duration-1000" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- SCORE QUOTIDIEN -->
+        <div class="bg-white rounded-[2rem] p-6 border-2 border-blue-50 shadow-sm flex justify-between items-center">
+            <div>
+                <p class="text-blue-600 text-[10px] font-black uppercase tracking-widest italic font-bold">Compteur Quotidien</p>
+                <div class="flex items-baseline gap-1">
+                    <span id="dailyPoints" class="text-4xl font-black text-slate-800 tabular-nums">0</span>
+                    <span class="text-slate-300 font-bold">/ 10 pts</span>
+                </div>
+                <p id="reset-info" class="text-[9px] text-slate-400 mt-1 italic"></p>
+            </div>
+            <div id="dailyBadge" class="h-16 w-16 rounded-2xl flex items-center justify-center text-3xl border shadow-inner bg-slate-50 text-slate-200 transition-all duration-500">📱</div>
+        </div>
+
+        <!-- MISSIONS -->
+        <section class="space-y-4">
+            <h2 class="text-slate-800 font-black text-xl ml-2 italic font-bold tracking-tight">🎯 Missions du jour</h2>
+            <div class="grid grid-cols-1 gap-3" id="actions-grid"></div>
+        </section>
+
+        <!-- RÉCOMPENSES -->
+        <section class="space-y-6">
+            <div>
+                <h2 class="text-blue-600 font-bold text-[10px] ml-2 mb-3 uppercase tracking-widest">Récompense Quotidienne</h2>
+                <div id="daily-reward-list"></div>
+            </div>
+            <div>
+                <h2 class="text-amber-600 font-bold text-[10px] ml-2 mb-3 uppercase tracking-widest">Paliers Long Terme</h2>
+                <div id="longterm-reward-list" class="grid gap-2"></div>
+            </div>
+        </section>
+
+        <!-- HISTORIQUE -->
+        <section class="space-y-3">
+            <div class="flex justify-between items-center ml-2">
+                <h2 class="font-bold text-slate-400 text-[10px] uppercase">Historique</h2>
+                <button onclick="toggleHistory()" id="histBtn" class="text-[9px] font-black text-blue-600 bg-blue-100 px-3 py-1 rounded-full uppercase italic">Chargement...</button>
+            </div>
+            <div id="history-container" class="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50 overflow-hidden shadow-sm">
+                <div id="history-list"></div>
+            </div>
+        </section>
+
+        <div class="pt-10 pb-6 text-center">
+            <button onclick="resetAll()" class="text-red-400 text-[9px] font-black uppercase tracking-widest opacity-20 hover:opacity-100 transition p-4">
+                Reset Manuel Complet
+            </button>
+        </div>
+    </main>
+
+    <script>
+        const SB_URL = 'https://okbwklfbrjjzlxnfwpfr.supabase.co';
+		const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9rYndrbGZicmpqemx4bmZ3cGZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NDc2NTIsImV4cCI6MjA5MzIyMzY1Mn0.A0JDJBQhUWMGcYsASk7_7gFVxAx-hHlbDjwseHni04E'; 
+
+        const db = supabase.createClient(SB_URL, SB_KEY);
+
+        let longTermPoints = 0;
+        let dailyPoints = 0;
+        let completedActions = []; // Cette liste vient maintenant de la DB
+        let currentUser = localStorage.getItem('kidquest_user');
+        let isHistoryExpanded = false;
+
+        const REWARDS = [
+            { pts: 10, label: "📱 15mn Pokémon TCG Pocket", type: "daily" },
+            { pts: 70, label: "🎮 45mn de Switch", type: "long" },
+            { pts: 80, label: "🎮 1h de Switch", type: "long" },
+            { pts: 100, label: "🎮 1h Switch + Sortie au choix", type: "long" },
+            { pts: 280, label: "👬 Inviter un copain (Après-midi)", type: "long" },
+            { pts: 320, label: "🛌 Inviter un copain (Nuit)", type: "long" },
+            { pts: 400, label: "🃏 Sortie magasin de cartes !", type: "long" }
+        ];
+
+        const ACTIONS = [
+            { id: 'grosmots', label: "🤫 Moins de 5 gros mots", pts: 2 },
+            { id: 'dej', label: "🥣 Petit déj équilibré", pts: 1 },
+            { id: 'etage', label: "🏠 Rester à l'étage seul", pts: 2 },
+            { id: 'essuyer', label: "🧻 S'essuyer seul", pts: 1 },
+            { id: 'ecran', label: "📱 Fin d'écran sans négoc'", pts: 2 },
+            { id: 'habits', label: "🧺 Habits au sale", pts: 1 },
+            { id: 'sport', label: "⚽ Sport / Activité", pts: 3 },
+            { id: 'ralage', label: "🌟 Pas de râlage", pts: 3 }
+        ];
+
+        function openProfileSelector() { document.getElementById('user-selection').classList.remove('hidden'); }
+        function setUser(name) { 
+            localStorage.setItem('kidquest_user', name); 
+            currentUser = name; 
+            location.reload();
+        }
+
+        async function init() {
+            if (!currentUser) { openProfileSelector(); return; }
+            document.getElementById('user-info').innerText = `Pilote : ${currentUser}`;
+            
+            const today = new Date().toDateString();
+
+            try {
+                const { data } = await db.from('score_board').select('*').eq('id', 1).maybeSingle();
+                if (data) {
+                    longTermPoints = data.long_term_points || 0;
+                    completedActions = data.completed_actions || [];
+                    let dbDaily = data.daily_points || 0;
+                    
+                    // --- LOGIQUE DE RESET SYNCHRONISÉE ---
+                    if (data.last_reset_date !== today) {
+                        // Nouveau jour : On vide TOUJOURS les boutons en base
+                        completedActions = []; 
+                        
+                        if (dbDaily >= 10) {
+                            dailyPoints = 0;
+                            await db.from('score_board').update({ 
+                                daily_points: 0, 
+                                completed_actions: [],
+                                last_reset_date: today 
+                            }).eq('id', 1);
+                        } else {
+                            dailyPoints = dbDaily;
+                            await db.from('score_board').update({ 
+                                completed_actions: [],
+                                last_reset_date: today 
+                            }).eq('id', 1);
+                        }
+                    } else {
+                        dailyPoints = dbDaily;
+                    }
+                    
+                    updateUI();
+                    loadLogs();
+                }
+            } catch (e) { console.error("Sync Error", e); }
+        }
+
+        function updateUI() {
+            document.getElementById('totalPoints').innerText = longTermPoints;
+            document.getElementById('dailyPoints').innerText = dailyPoints;
+            const next = REWARDS.find(p => p.pts > longTermPoints && p.type === 'long') || REWARDS[REWARDS.length-1];
+            document.getElementById('nextGoal').innerText = next.pts;
+            document.getElementById('globalProgress').style.width = Math.min((longTermPoints / next.pts) * 100, 100) + '%';
+            
+            const badge = document.getElementById('dailyBadge');
+            const isUnlocked = dailyPoints >= 10;
+            if (isUnlocked) {
+                badge.innerText = '✅';
+                badge.className = "h-16 w-16 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-blue-600 text-white glow-blue border-none animate-bounce";
+            } else {
+                badge.innerText = '📱';
+                badge.className = "h-16 w-16 rounded-2xl flex items-center justify-center text-3xl border shadow-inner bg-slate-50 text-slate-200";
+            }
+            
+            renderRewards(isUnlocked);
+            renderActions();
+        }
+
+        function renderRewards(isUnlocked) {
+            document.getElementById('daily-reward-list').innerHTML = `
+                <div class="p-5 rounded-2xl border-2 flex justify-between items-center transition-all ${isUnlocked ? 'reward-unlocked glow-blue' : 'reward-locked bg-white'}">
+                    <span class="text-sm font-black italic font-bold">${REWARDS[0].label}</span>
+                    <span class="text-xs font-black ${isUnlocked ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600'} px-2 py-1 rounded-lg uppercase">
+                        ${isUnlocked ? 'Gagné !' : '10 pts'}
+                    </span>
+                </div>`;
+
+            document.getElementById('longterm-reward-list').innerHTML = REWARDS.slice(1).map(p => `
+                <div class="p-4 rounded-xl border flex justify-between items-center transition-all ${longTermPoints >= p.pts ? 'reward-unlocked' : 'reward-locked bg-white'}">
+                    <span class="text-[11px] font-bold uppercase tracking-tight font-bold">${p.label}</span>
+                    <span class="text-[10px] font-black opacity-50">${p.pts}</span>
+                </div>`).join('');
+        }
+
+        function renderActions() {
+            const grid = document.getElementById('actions-grid');
+            grid.innerHTML = ACTIONS.map(a => {
+                const isDone = completedActions.includes(a.id);
+                return `
+                    <button onclick="doAction(${a.pts}, '${a.label.replace(/'/g, "\\'")}', '${a.id}')" ${isDone ? 'disabled' : ''} 
+                        class="flex justify-between items-center w-full p-5 rounded-2xl border-2 transition-all ${isDone ? 'btn-done' : 'bg-white shadow-sm border-slate-100 active:scale-95'}">
+                        <div class="text-left">
+                            <div class="text-sm font-black text-slate-700 font-bold">${isDone ? '✔️ ' : ''}${a.label}</div>
+                            ${isDone ? '<div class="text-[9px] font-bold text-blue-500 uppercase tracking-widest mt-1 italic">Validé pour aujourd\'hui</div>' : ''}
+                        </div>
+                        <span class="${isDone ? 'bg-slate-300 text-slate-600' : 'bg-slate-900 text-white'} px-3 py-2 rounded-xl font-black text-xs">+${a.pts}</span>
+                    </button>`;
+            }).join('');
+        }
+
+        async function doAction(pts, label, id) {
+            if(!confirm(`Valider : ${label} ?`)) return;
+            
+            // Mise à jour locale
+            completedActions.push(id);
+            longTermPoints += pts;
+            dailyPoints += pts;
+            updateUI();
+            
+            // Mise à jour de la DB (Points + Liste des boutons faits)
+            await db.from('score_board').update({ 
+                long_term_points: longTermPoints, 
+                daily_points: dailyPoints,
+                completed_actions: completedActions
+            }).eq('id', 1);
+            
+            await db.from('action_logs').insert([{ label: label, points_value: pts, author: currentUser }]);
+            loadLogs();
+        }
+
+        async function loadLogs() {
+            const { data } = await db.from('action_logs').select('*').order('created_at', { ascending: false }).limit(20);
+            if (data) {
+                const items = isHistoryExpanded ? data : data.slice(0, 3);
+                document.getElementById('history-list').innerHTML = items.map(l => `
+                    <div class="p-3 flex justify-between items-center text-[10px]">
+                        <div class="flex flex-col">
+                            <span class="font-black ${l.label.includes('RESET') ? 'text-red-500' : 'text-slate-700'} uppercase font-bold">${l.label}</span>
+                            <span class="text-slate-400 font-bold tracking-tighter italic">Par ${l.author || '?'}</span>
+                        </div>
+                        <span class="font-black ${l.points_value > 0 ? 'text-blue-600 bg-blue-50' : 'text-red-600 bg-red-50'} px-2 py-1 rounded-md font-bold">${l.points_value > 0 ? '+' : ''}${l.points_value}</span>
+                    </div>`).join('');
+                document.getElementById('histBtn').innerText = isHistoryExpanded ? "Masquer" : `Voir + (${data.length})`;
+            }
+        }
+
+        function toggleHistory() { isHistoryExpanded = !isHistoryExpanded; loadLogs(); }
+
+        async function resetAll() {
+            if(confirm(`⚠️ RESET SYNCHRO : ${currentUser}, reset pour TOUS les appareils ?`)) {
+                await db.from('action_logs').insert([{ label: "🚨 RESET MANUEL COMPLET", points_value: 0, author: currentUser }]);
+                await db.from('score_board').update({ 
+                    long_term_points: 0, 
+                    daily_points: 0, 
+                    completed_actions: [] 
+                }).eq('id', 1);
+                location.reload();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
